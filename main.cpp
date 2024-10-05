@@ -1,3 +1,11 @@
+/*
+  This project is based off https://github.com/galkahana/pdf-transparent-tiff
+  functions were copied a modified to work with the zint bitmap buffer
+
+  Thanks: galkahana (https://github.com/galkahana)
+  License: Apache-2.0 license
+*/
+
 #include <PDFWriter.h>
 #include <PDFModifiedPage.h>
 #include <PDFFormXObject.h>
