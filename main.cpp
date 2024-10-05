@@ -115,20 +115,20 @@ PDFFormXObject* CreateFormXObjectFromBitmap(PDFWriter* inWriter, uint32_t w, uin
 }
 
 EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint8_t* raster, bool original) {
-	EStatusCode status;
+	EStatusCode status = eSuccess;
 	InputFile tiffFile;
 
 	do {
     if(original) {
-      PDFPage* page = new PDFPage();
-      page->SetMediaBox(PDFRectangle(0,0,595,842));
-      PageContentContext* pageContentContext = inWriter.StartPageContentContext(page);
-
       PDFFormXObject* imageFormXObject = CreateFormXObjectFromBitmap(&inWriter, w, h, raster, 0);
       if(!imageFormXObject) {
         printf("failed to create xobject from bitmap");
         break;
       }
+
+      PDFPage* page = new PDFPage();
+      page->SetMediaBox(PDFRectangle(0,0,595,842));
+      PageContentContext* pageContentContext = inWriter.StartPageContentContext(page);
 
       // place the image in page bottom left and discard form. scaled to quarter
       pageContentContext->q();
@@ -137,17 +137,25 @@ EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t 
       pageContentContext->Q();
       delete imageFormXObject;
 
-      inWriter.EndPageContentContext(pageContentContext);
-      inWriter.WritePageAndRelease(page);
+      status = inWriter.EndPageContentContext(pageContentContext);
+      if (status != eSuccess) {
+        printf("failed to end page content context");
+        break;
+      }
+      status = inWriter.WritePageAndRelease(page);
+      if (status != eSuccess) {
+        printf("failed to write page");
+        break;
+      }
     } else {
-      PDFModifiedPage* page = new PDFModifiedPage(&inWriter, page_num);
-      AbstractContentContext* pageContentContext = page->StartContentContext();
-
       PDFFormXObject* imageFormXObject = CreateFormXObjectFromBitmap(&inWriter, w, h, raster, 0);
       if(!imageFormXObject) {
         printf("failed to create xobject from bitmap");
         break;
       }
+
+      PDFModifiedPage* page = new PDFModifiedPage(&inWriter, page_num);
+      AbstractContentContext* pageContentContext = page->StartContentContext();
 
       // place the image in page bottom left and discard form. scaled to quarter
       pageContentContext->q();
@@ -156,8 +164,17 @@ EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t 
       pageContentContext->Q();
       delete imageFormXObject;
 
-      page->EndContentContext();
-      page->WritePage();
+      status = page->EndContentContext();
+      if(status != eSuccess) {
+        printf("failed to end content context");
+        break;
+      }
+      status = page->WritePage();
+      if(status != eSuccess) {
+        printf("failed to write page");
+        break;
+      }
+      delete page;
     }
 	} while(false);
 
@@ -167,14 +184,14 @@ EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t 
 int main(int argc, char** argv) {
   EStatusCode status = eSuccess;
   PDFWriter writer;
-  bool original = (bool)atoi(argv[3]);
+  bool original = (bool)atoi(argv[4]);
 
   do {
     status = writer.ModifyPDF(
       argv[1],
       ePDFVersion13,
       argv[2],
-      LogConfiguration(true, true, argv[2])
+      LogConfiguration(true, true, argv[3])
     );
 
     if(status != eSuccess) {
