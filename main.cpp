@@ -19,35 +19,32 @@
 #include <zint.h>
 
 PDFFormXObject* createImageFormXObjectFromImageXObject(PDFWriter* inWriter, PDFImageXObject* imageXObject, ObjectIDType inFormXObjectID, uint32_t w, uint32_t h) {
-	PDFHummus::DocumentContext& docCxt = inWriter->GetDocumentContext();
-	PDFFormXObject* formXObject = NULL;
-	do
-	{
+  PDFHummus::DocumentContext& docCxt = inWriter->GetDocumentContext();
+  PDFFormXObject* formXObject = NULL;
+  do {
+    formXObject = docCxt.StartFormXObject(PDFRectangle(0, 0, w, h), inFormXObjectID);
+    XObjectContentContext* xobjectContentContext = formXObject->GetContentContext();
 
-		formXObject = docCxt.StartFormXObject(PDFRectangle(0, 0, w, h), inFormXObjectID);
-		XObjectContentContext* xobjectContentContext = formXObject->GetContentContext();
+    xobjectContentContext->q();
+    xobjectContentContext->cm(w, 0, 0, h, 0, 0);
+    xobjectContentContext->Do(formXObject->GetResourcesDictionary().AddImageXObjectMapping(imageXObject));
+    xobjectContentContext->Q();
 
-		xobjectContentContext->q();
-		xobjectContentContext->cm(w, 0, 0, h, 0, 0);
-		xobjectContentContext->Do(formXObject->GetResourcesDictionary().AddImageXObjectMapping(imageXObject));
-		xobjectContentContext->Q();
-
-		EStatusCode status = docCxt.EndFormXObjectNoRelease(formXObject);
-		if (status != PDFHummus::eSuccess)
-		{
-			delete formXObject;
-			formXObject = NULL;
-			break;
-		}
-	} while (false);
-	return formXObject;
+    EStatusCode status = docCxt.EndFormXObjectNoRelease(formXObject);
+    if(status != PDFHummus::eSuccess) {
+      delete formXObject;
+      formXObject = NULL;
+      break;
+    }
+  } while(false);
+  return formXObject;
 }
 
 static PDFImageXObject* createImageXObjectForBitmap(PDFWriter* inWriter, uint32_t w, uint32_t h, uint8_t* raster) {
-	PDFImageXObject* imageXObject = NULL;
-	PDFStream* imageStream = NULL;
-	ObjectsContext& objCxt = inWriter->GetObjectsContext();
-	EStatusCode status = eSuccess;
+  PDFImageXObject* imageXObject = NULL;
+  PDFStream* imageStream = NULL;
+  ObjectsContext& objCxt = inWriter->GetObjectsContext();
+  EStatusCode status = eSuccess;
 
   // allocate image elements
   ObjectIDType imageXObjectObjectId = objCxt.GetInDirectObjectsRegistry().AllocateNewObjectID();
@@ -96,17 +93,17 @@ static PDFImageXObject* createImageXObjectForBitmap(PDFWriter* inWriter, uint32_
 
   imageXObject = new PDFImageXObject(imageXObjectObjectId, KProcsetImageC);
 
-	if (eFailure == status) {
-		delete imageXObject;
-		imageXObject = NULL;
-	}
-	delete imageStream;
-	return imageXObject;
+  if(eFailure == status) {
+    delete imageXObject;
+    imageXObject = NULL;
+  }
+  delete imageStream;
+  return imageXObject;
 }
 
 PDFFormXObject* CreateFormXObjectFromBitmap(PDFWriter* inWriter, uint32_t w, uint32_t h, uint8_t* raster, ObjectIDType inFormXObjectId) {
-	PDFFormXObject* imageFormXObject = NULL;
-	PDFImageXObject* imageXObject = NULL;
+  PDFFormXObject* imageFormXObject = NULL;
+  PDFImageXObject* imageXObject = NULL;
 
   do {
     // create image xobject based on image data
@@ -115,7 +112,7 @@ PDFFormXObject* CreateFormXObjectFromBitmap(PDFWriter* inWriter, uint32_t w, uin
       break;
 
     // create form
-    imageFormXObject = createImageFormXObjectFromImageXObject(inWriter, imageXObject, inFormXObjectId == 0 ? inWriter->GetObjectsContext().GetInDirectObjectsRegistry().AllocateNewObjectID() : 0 , w, h);
+    imageFormXObject = createImageFormXObjectFromImageXObject(inWriter, imageXObject, inFormXObjectId == 0 ? inWriter->GetObjectsContext().GetInDirectObjectsRegistry().AllocateNewObjectID() : 0, w, h);
   } while(false);
 
   delete imageXObject;
@@ -123,10 +120,10 @@ PDFFormXObject* CreateFormXObjectFromBitmap(PDFWriter* inWriter, uint32_t w, uin
 }
 
 EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint8_t* raster, bool original) {
-	EStatusCode status = eSuccess;
-	InputFile tiffFile;
+  EStatusCode status = eSuccess;
+  InputFile tiffFile;
 
-	do {
+  do {
     if(original) {
       PDFFormXObject* imageFormXObject = CreateFormXObjectFromBitmap(&inWriter, w, h, raster, 0);
       if(!imageFormXObject) {
@@ -135,23 +132,23 @@ EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t 
       }
 
       PDFPage* page = new PDFPage();
-      page->SetMediaBox(PDFRectangle(0,0,595,842));
+      page->SetMediaBox(PDFRectangle(0, 0, 595, 842));
       PageContentContext* pageContentContext = inWriter.StartPageContentContext(page);
 
       // place the image in page bottom left and discard form. scaled to quarter
       pageContentContext->q();
-      pageContentContext->cm(1,0,0,1,x,y);
+      pageContentContext->cm(1, 0, 0, 1, x, y);
       pageContentContext->Do(page->GetResourcesDictionary().AddFormXObjectMapping(imageFormXObject->GetObjectID()));
       pageContentContext->Q();
       delete imageFormXObject;
 
       status = inWriter.EndPageContentContext(pageContentContext);
-      if (status != eSuccess) {
+      if(status != eSuccess) {
         printf("failed to end page content context");
         break;
       }
       status = inWriter.WritePageAndRelease(page);
-      if (status != eSuccess) {
+      if(status != eSuccess) {
         printf("failed to write page");
         break;
       }
@@ -167,7 +164,7 @@ EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t 
 
       // place the image in page bottom left and discard form. scaled to quarter
       pageContentContext->q();
-      pageContentContext->cm(1,0,0,1,x,y);
+      pageContentContext->cm(1, 0, 0, 1, x, y);
       pageContentContext->Do(pageContentContext->GetResourcesDictionary()->AddFormXObjectMapping(imageFormXObject->GetObjectID()));
       pageContentContext->Q();
       delete imageFormXObject;
@@ -184,9 +181,9 @@ EStatusCode placeBitmap(PDFWriter& inWriter, int page_num, uint32_t x, uint32_t 
       }
       delete page;
     }
-	} while(false);
+  } while(false);
 
-	return status;
+  return status;
 }
 
 int main(int argc, char** argv) {
@@ -207,7 +204,7 @@ int main(int argc, char** argv) {
       break;
     }
 
-    struct zint_symbol *symbol = NULL;
+    struct zint_symbol* symbol = NULL;
     symbol = ZBarcode_Create();
     if(symbol == NULL) {
       printf("failed to generate barcode\n");
@@ -221,7 +218,7 @@ int main(int argc, char** argv) {
     symbol->height = 15;
     symbol->show_hrt = false;
     char barcode[] = "12345678";
-    ret = ZBarcode_Encode_and_Buffer(symbol, (unsigned char *) barcode, sizeof(barcode), 0);
+    ret = ZBarcode_Encode_and_Buffer(symbol, (unsigned char*)barcode, sizeof(barcode), 0);
     placeBitmap(writer, 0, 0, 0, symbol->bitmap_width, symbol->bitmap_height, symbol->bitmap, original);
 
     ZBarcode_Delete(symbol);
@@ -230,7 +227,6 @@ int main(int argc, char** argv) {
     if(status != eSuccess) {
       break;
     }
-
   } while(0);
 
   return 0;
